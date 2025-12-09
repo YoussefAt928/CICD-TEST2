@@ -19,26 +19,26 @@ jobs:
             --exclude ".env" \
             --exclude "vendor" \
             --exclude "node_modules" \
-            ./ root@${{ secrets.TEST_SERVER_IP }}:/var/www/test/current/
+            ./ root@${{ secrets.TEST_SERVER_IP }}:/var/www/current/
 
       - name: Install Composer dependencies
         run: |
           ssh root@${{ secrets.TEST_SERVER_IP }} "
-            cd /var/www/test/current && \
+            cd /var/www/current && \
             composer install --no-interaction --prefer-dist
           "
 
       - name: Run Migrations (TEST ONLY)
         run: |
           ssh root@${{ secrets.TEST_SERVER_IP }} "
-            cd /var/www/test/current && \
+            cd /var/www/current && \
             php artisan migrate --force
           "
 
       - name: Clear Laravel Caches
         run: |
           ssh root@${{ secrets.TEST_SERVER_IP }} "
-            cd /var/www/test/current && \
+            cd /var/www/current && \
             php artisan config:clear && \
             php artisan route:clear && \
             php artisan cache:clear
@@ -47,8 +47,8 @@ jobs:
       - name: Fix Permissions
         run: |
           ssh root@${{ secrets.TEST_SERVER_IP }} "
-            chown -R nginx:nginx /var/www/test/current && \
-            chmod -R 775 /var/www/test/current/storage /var/www/test/current/bootstrap/cache
+            chown -R nginx:nginx /var/www/current && \
+            chmod -R 775 /var/www/current/storage /var/www/current/bootstrap/cache
           "
 
       - name: Restart PHP & Nginx
