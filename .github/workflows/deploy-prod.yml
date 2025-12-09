@@ -28,7 +28,11 @@ jobs:
             composer install --no-interaction --prefer-dist
           "
 
+<<<<<<< HEAD
       - name: Clear Caches (Optional but safe)
+=======
+      - name: Clear Laravel Caches
+>>>>>>> main
         run: |
           ssh root@${{ secrets.PROD_SERVER_IP }} "
             cd /var/www/current && \
