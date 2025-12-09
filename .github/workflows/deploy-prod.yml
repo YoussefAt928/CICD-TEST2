@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy to Prod
 
 on:
   push:
@@ -10,46 +10,38 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Sync Project to Production Server
+      - name: Sync project to PROD Server
         run: |
           rsync -avz --delete \
             --exclude ".env" \
             --exclude "vendor" \
             --exclude "node_modules" \
-            ./ root@${{ secrets.PROD_SERVER_IP }}:/var/www/releases/latest/
+            ./ root@${{ secrets.PROD_SERVER_IP }}:/var/www/current/
 
-      - name: Install Composer Dependencies
-        run: |
-          ssh root@${{ secrets.PROD_SERVER_IP }} "
-            cd /var/www/releases/latest && \
-            composer install --no-interaction --prefer-dist --no-dev
-          "
-
-      - name: Swap Release Symlink (Zero Downtime)
-        run: |
-          ssh root@${{ secrets.PROD_SERVER_IP }} "
-            ln -sfn /var/www/releases/latest /var/www/current && \
-            chown -h nginx:nginx /var/www/current
-          "
-
-      - name: Clear Laravel Cache (Safe)
+      - name: Install Composer dependencies
         run: |
           ssh root@${{ secrets.PROD_SERVER_IP }} "
             cd /var/www/current && \
-            php artisan config:cache && \
-            php artisan route:cache && \
-            php artisan view:cache
+            composer install --no-interaction --prefer-dist
+          "
+
+      - name: Clear Caches (Optional but safe)
+        run: |
+          ssh root@${{ secrets.PROD_SERVER_IP }} "
+            cd /var/www/current && \
+            php artisan config:clear && \
+            php artisan route:clear && \
+            php artisan cache:clear
           "
 
       - name: Fix Permissions
         run: |
           ssh root@${{ secrets.PROD_SERVER_IP }} "
-            chown -R nginx:nginx /var/www/releases && \
-            find /var/www/releases -type d -exec chmod 775 {} \; && \
-            find /var/www/releases -type f -exec chmod 664 {} \;
+            chown -R nginx:nginx /var/www/current && \
+            chmod -R 775 /var/www/current/storage /var/www/current/bootstrap/cache
           "
 
       - name: Restart PHP & Nginx
