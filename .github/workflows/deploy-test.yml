@@ -27,27 +27,27 @@ jobs:
             echo "Pulling latest code from dev..."
             git pull origin dev
 
-            echo "Building containers (Podman)..."
-            podman compose build
+            echo "Building containers..."
+            podman-compose build
 
             echo "Starting containers..."
-            podman compose up -d
+            podman-compose up -d
 
             echo "Fixing Laravel permissions..."
             chmod -R 775 storage bootstrap/cache
 
-            echo "Generating app key if needed..."
-            podman compose exec app php artisan key:generate || true
+            echo "Generate app key if needed..."
+            podman-compose exec app php artisan key:generate || true
 
             echo "Running migrations (TEST only)..."
-            podman compose exec app php artisan migrate --force
+            podman-compose exec app php artisan migrate --force
 
             echo "Clearing Laravel caches..."
-            podman compose exec app php artisan config:clear
-            podman compose exec app php artisan route:clear
-            podman compose exec app php artisan cache:clear
+            podman-compose exec app php artisan config:clear
+            podman-compose exec app php artisan route:clear
+            podman-compose exec app php artisan cache:clear
 
             echo "=============================="
-            echo "TEST deployment finished successfully"
+            echo "TEST deployment finished"
             echo "=============================="
           EOF
