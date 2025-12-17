@@ -1,9 +1,9 @@
-name: Deploy to Test (Podman)
+name: Deploy to TEST (Docker)
 
 on:
   push:
     branches:
-      - devv
+      - dev
 
 jobs:
   deploy:
@@ -13,41 +13,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy via Podman on TEST server
+      - name: Deploy Docker app to TEST
         run: |
-          ssh root@${{ secrets.TEST_SERVER_IP }} << 'EOF'
-            set -e
-
-            echo "=============================="
-            echo "Starting TEST deployment"
-            echo "=============================="
-
+          ssh root@${{ secrets.TEST_SERVER_IP }}  << 'EOF'
             cd /var/www/current
-
-            echo "Pulling latest code from dev..."
             git pull origin dev
-
-            echo "Building containers..."
+            podman-compose down
             podman-compose build
-
-            echo "Starting containers..."
             podman-compose up -d
-
-            echo "Fixing Laravel permissions..."
-            chmod -R 775 storage bootstrap/cache
-
-            echo "Generate app key if needed..."
-            podman-compose exec app php artisan key:generate || true
-
-            echo "Running migrations (TEST only)..."
-            podman-compose exec app php artisan migrate --force
-
-            echo "Clearing Laravel caches..."
-            podman-compose exec app php artisan config:clear
-            podman-compose exec app php artisan route:clear
-            podman-compose exec app php artisan cache:clear
-
-            echo "=============================="
-            echo "TEST deployment finished"
-            echo "=============================="
           EOF
+
