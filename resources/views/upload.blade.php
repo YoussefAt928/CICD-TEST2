@@ -116,7 +116,7 @@
 </head>
 
 <body>
-    <h1>رفع ملف CSV1234</h1>
+    <h1>رفع ملف CSV</h1>
 
     @if (session('success'))
         <p style="color: #34c759; font-weight: bold;">{{ session('success') }}</p>
