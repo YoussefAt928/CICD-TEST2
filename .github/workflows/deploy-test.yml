@@ -1,4 +1,4 @@
-name: Deploy to TEST (Docker)
+name: Deploy to TEST (Docker + Registry)
 
 on:
   push:
@@ -13,24 +13,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build & Deploy versioned image to TEST
+      - name: Build, Push, Deploy to TEST
         run: |
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           IMAGE_TAG="dev-${SHORT_SHA}"
+          IMAGE_NAME="ghcr.io/youssefat928/laravel-app:${IMAGE_TAG}"
 
           ssh root@${{ secrets.TEST_SERVER_IP }} "bash -s" << EOF
             set -e
-
             cd /var/www/current
             git pull origin dev
 
-            # Build image ONCE
-            podman build -t laravel-app:${IMAGE_TAG} .
+            # Build once
+            podman build -t ${IMAGE_NAME} .
 
-            # Optional floating tag
-            podman tag laravel-app:${IMAGE_TAG} laravel-app:dev-latest
+            # Push to registry
+            podman push ${IMAGE_NAME}
 
-            # Run container using IMAGE ONLY
+            # Run from registry image
             IMAGE_TAG=${IMAGE_TAG} podman-compose down
             IMAGE_TAG=${IMAGE_TAG} podman-compose up -d
           EOF

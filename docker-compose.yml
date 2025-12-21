@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   app:
-    image: laravel-app:${IMAGE_TAG}
+    image: ghcr.io/youssefat928/laravel-app:${IMAGE_TAG}
     container_name: laravel_app
     ports:
       - "8080:80"
