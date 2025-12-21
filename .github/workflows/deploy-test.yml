@@ -52,8 +52,13 @@ jobs:
 
     steps:
       - name: Deploy to PROD using Ansible
+        env:
+          IMAGE_TAG: ${{ needs.build_and_test.outputs.image_tag }}
         run: |
+          echo "Deploying image tag: ${IMAGE_TAG}"
+
+
           ansible-playbook \
             ~/ansible-bitrix-laravel/playbooks/deploy-prod.yml \
             -i ~/ansible-bitrix-laravel/inventory/hosts.ini \
-            -e image_tag=${{ needs.build_and_test.outputs.image_tag }}
+            -e image_tag=${IMAGE_TAG}
