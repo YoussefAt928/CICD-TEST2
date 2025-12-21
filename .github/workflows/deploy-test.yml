@@ -17,10 +17,12 @@ jobs:
         id: meta
         run: |
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          GHCR_USER_LOWER=$(echo "${{ secrets.GHCR_USER }}" | tr '[:upper:]' '[:lower:]')
+
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "IMAGE=ghcr.io/${{ secrets.GHCR_USER }}/laravel-app:dev-$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "IMAGE_LATEST=ghcr.io/${{ secrets.GHCR_USER }}/laravel-app:dev-latest" >> $GITHUB_OUTPUT
+          echo "IMAGE=ghcr.io/$GHCR_USER_LOWER/laravel-app:dev-$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "IMAGE_LATEST=ghcr.io/$GHCR_USER_LOWER/laravel-app:dev-latest" >> $GITHUB_OUTPUT
 
       - name: Login to GHCR (runner)
         run: |
