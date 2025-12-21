@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy Docker app to TEST (versioned images)
+      - name: Build & Deploy versioned image to TEST
         run: |
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           IMAGE_TAG="dev-${SHORT_SHA}"
@@ -24,15 +24,13 @@ jobs:
             cd /var/www/current
             git pull origin dev
 
-            # Stop running containers
-            IMAGE_TAG=${IMAGE_TAG} podman-compose down
+            # Build image ONCE
+            podman build -t laravel-app:${IMAGE_TAG} .
 
-            # Build versioned image
-            IMAGE_TAG=${IMAGE_TAG} podman-compose build
-
-            # Tag also as dev-latest (easy rollback + reference)
+            # Optional floating tag
             podman tag laravel-app:${IMAGE_TAG} laravel-app:dev-latest
 
-            # Start containers using the versioned tag
+            # Run container using IMAGE ONLY
+            IMAGE_TAG=${IMAGE_TAG} podman-compose down
             IMAGE_TAG=${IMAGE_TAG} podman-compose up -d
           EOF

@@ -2,7 +2,6 @@ version: "3.8"
 
 services:
   app:
-    build: .
     image: laravel-app:${IMAGE_TAG}
     container_name: laravel_app
     ports:
