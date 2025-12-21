@@ -46,16 +46,19 @@ jobs:
 
       - name: Deploy to TEST (pull & run only)
         run: |
+          IMAGE="${{ steps.meta.outputs.IMAGE }}"
+
           ssh root@${{ secrets.TEST_SERVER_IP }} "bash -s" << EOF
             set -e
             cd /var/www/current
             git pull origin dev
 
-            echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
-            podman pull "${{ steps.meta.outputs.IMAGE }}"
+            podman login ghcr.io -u "${{ secrets.GHCR_USER }}" -p "${{ secrets.GHCR_TOKEN }}"
 
-            GHCR_USER="${{ secrets.GHCR_USER }}" \
-            IMAGE_TAG="${{ steps.meta.outputs.IMAGE_TAG }}" \
+            podman pull "$IMAGE"
+
+            export IMAGE="$IMAGE"
+
             podman-compose up -d
 
             podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
