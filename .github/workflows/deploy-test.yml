@@ -1,4 +1,4 @@
-name: Deploy to Test
+name: Deploy to TEST (Docker + Registry)
 
 on:
   push:
@@ -13,46 +13,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Sync project to Test Server
+      - name: Build, Push, Deploy to TEST
         run: |
-          rsync -avz --delete \
-            --exclude ".env" \
-            --exclude "vendor" \
-            --exclude "node_modules" \
-            ./ root@${{ secrets.TEST_SERVER_IP }}:/var/www/current/
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          IMAGE_TAG="dev-${SHORT_SHA}"
+          IMAGE_NAME="ghcr.io/youssefat928/laravel-app:${IMAGE_TAG}"
 
-      - name: Install Composer dependencies
-        run: |
-          ssh root@${{ secrets.TEST_SERVER_IP }} "
-            cd /var/www/current && \
-            composer install --no-interaction --prefer-dist
-          "
+          ssh root@${{ secrets.TEST_SERVER_IP }} "bash -s" << EOF
+            set -e
+            cd /var/www/current
+            git pull origin dev
 
-      - name: Run Migrations (TEST ONLY)
-        run: |
-          ssh root@${{ secrets.TEST_SERVER_IP }} "
-            cd /var/www/current && \
-            php artisan migrate --force
-          "
+            # Build once
+            podman build -t ${IMAGE_NAME} .
 
-      - name: Clear Laravel Caches
-        run: |
-          ssh root@${{ secrets.TEST_SERVER_IP }} "
-            cd /var/www/current && \
-            php artisan config:clear && \
-            php artisan route:clear && \
-            php artisan cache:clear
-          "
+            # Push to registry
+            podman push ${IMAGE_NAME}
 
-      - name: Fix Permissions
-        run: |
-          ssh root@${{ secrets.TEST_SERVER_IP }} "
-            chown -R nginx:nginx /var/www/current && \
-            chmod -R 775 /var/www/current/storage /var/www/current/bootstrap/cache
-          "
-
-      - name: Restart PHP & Nginx
-        run: |
-          ssh root@${{ secrets.TEST_SERVER_IP }} "
-            systemctl restart php-fpm && systemctl restart nginx
-          "
+            # Run from registry image
+            IMAGE_TAG=${IMAGE_TAG} podman-compose down
+            IMAGE_TAG=${IMAGE_TAG} podman-compose up -d
+          EOF
