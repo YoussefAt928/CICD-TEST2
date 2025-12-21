@@ -30,7 +30,10 @@ jobs:
 
       - name: Build image (runner only)
         run: |
-          podman build -t "${{ steps.meta.outputs.IMAGE }}" .
+          podman build \
+            --isolation=chroot \
+            --cap-add=SYS_ADMIN \
+            -t "${{ steps.meta.outputs.IMAGE }}" .
 
       - name: Push image (runner only)
         run: |
