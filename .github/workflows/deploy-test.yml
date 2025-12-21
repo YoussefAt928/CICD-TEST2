@@ -1,4 +1,4 @@
-name: Deploy to TEST (Docker)
+name: Deploy to TEST (Build once, Deploy image)
 
 on:
   push:
@@ -13,26 +13,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy Docker app to TEST (versioned images)
+      - name: Compute image metadata
+        id: meta
         run: |
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          IMAGE_TAG="dev-${SHORT_SHA}"
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "IMAGE=ghcr.io/${{ secrets.GHCR_USER }}/laravel-app:dev-$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "IMAGE_LATEST=ghcr.io/${{ secrets.GHCR_USER }}/laravel-app:dev-latest" >> $GITHUB_OUTPUT
 
+      - name: Login to GHCR (runner)
+        run: |
+          echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+
+      - name: Build image (runner only)
+        run: |
+          podman build -t "${{ steps.meta.outputs.IMAGE }}" .
+
+      - name: Push image (runner only)
+        run: |
+          podman push "${{ steps.meta.outputs.IMAGE }}"
+
+      - name: Tag & push dev-latest
+        run: |
+          podman tag "${{ steps.meta.outputs.IMAGE }}" "${{ steps.meta.outputs.IMAGE_LATEST }}"
+          podman push "${{ steps.meta.outputs.IMAGE_LATEST }}"
+
+      - name: Deploy to TEST (pull & run only)
+        run: |
           ssh root@${{ secrets.TEST_SERVER_IP }} "bash -s" << EOF
             set -e
-
             cd /var/www/current
             git pull origin dev
 
-            # Stop running containers
-            IMAGE_TAG=${IMAGE_TAG} podman-compose down
+            echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+            podman pull "${{ steps.meta.outputs.IMAGE }}"
 
-            # Build versioned image
-            IMAGE_TAG=${IMAGE_TAG} podman-compose build
+            GHCR_USER="${{ secrets.GHCR_USER }}" \
+            IMAGE_TAG="${{ steps.meta.outputs.IMAGE_TAG }}" \
+            podman-compose up -d
 
-            # Tag also as dev-latest (easy rollback + reference)
-            podman tag laravel-app:${IMAGE_TAG} laravel-app:dev-latest
-
-            # Start containers using the versioned tag
-            IMAGE_TAG=${IMAGE_TAG} podman-compose up -d
+            podman ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
           EOF
