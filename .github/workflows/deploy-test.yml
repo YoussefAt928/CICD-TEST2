@@ -27,7 +27,7 @@ jobs:
 
           echo "Building ${IMAGE_NAME}"
 
-          ssh root@192.168.1.28 << EOF
+          ssh root@${{ secrets.TEST_SERVER_IP }} << EOF
             set -e
             cd /var/www/current
             git pull origin dev
