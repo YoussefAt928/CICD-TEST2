@@ -1,5 +1,5 @@
 # ---------- Stage 1: Composer ----------
-FROM composer:2 AS composer
+FROM docker.io/library/composer:2 AS composer
 
 # ---------- Stage 2: PHP Runtime ----------
 FROM php:8.2-fpm
