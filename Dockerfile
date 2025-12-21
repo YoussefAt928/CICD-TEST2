@@ -1,8 +1,22 @@
 # ---------- Stage 1: Composer ----------
 FROM docker.io/library/composer:2 AS composer
 
+WORKDIR /app
+
+# Copy composer files first (better cache)
+COPY composer.json composer.lock ./
+
+RUN composer install \
+    --no-dev \
+    --prefer-dist \
+    --no-interaction \
+    --no-progress
+
+# Copy the rest of the application
+COPY . .
+
 # ---------- Stage 2: PHP Runtime ----------
-FROM php:8.2-fpm
+FROM docker.io/library/php:8.2-fpm
 
 USER root
 
@@ -18,15 +32,14 @@ RUN apt-get update && apt-get install -y \
 
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-COPY --from=composer /usr/bin/composer /usr/bin/composer
-
 WORKDIR /var/www
-COPY . .
+
+# Copy app WITH vendor from composer stage
+COPY --from=composer /app /var/www
 
 RUN chown -R www-data:www-data /var/www
+
 USER www-data
 
-EXPOSE 80
 EXPOSE 8000
-
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
