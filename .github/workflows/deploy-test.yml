@@ -31,6 +31,10 @@ jobs:
             set -e
             cd /var/www/current
 
+            # 🔥 THIS WAS MISSING
+            git fetch origin
+            git reset --hard origin/dev
+
             echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io \
               -u "${{ secrets.GHCR_USER }}" --password-stdin
 
