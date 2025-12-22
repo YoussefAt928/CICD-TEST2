@@ -6,7 +6,7 @@ on:
       - dev
 
 jobs:
-  build_image:
+  build_and_test:
     runs-on: self-hosted
 
     outputs:
@@ -16,63 +16,52 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Login to GHCR
-        run: |
-          echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io \
-            -u ${{ secrets.GHCR_USER }} --password-stdin
-
-      - name: Build & push image
+      - name: Build, push image, deploy to TEST
         id: set_tag
         run: |
           set -e
 
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           IMAGE_TAG="dev-${SHORT_SHA}"
-          IMAGE_NAME="ghcr.io/YoussefAt928/laravel-app:${IMAGE_TAG}"
+          IMAGE_NAME="ghcr.io/youssefat928/laravel-app:${IMAGE_TAG}"
 
           echo "Building image: ${IMAGE_NAME}"
 
-          podman build -t ${IMAGE_NAME} .
-          podman push ${IMAGE_NAME}
-
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-
-
-  deploy_test:
-    needs: build_image
-    runs-on: self-hosted
-
-    steps:
-      - name: Deploy to TEST
-        env:
-          IMAGE_TAG: ${{ needs.build_image.outputs.image_tag }}
-        run: |
           ssh root@${{ secrets.TEST_SERVER_IP }} << EOF
             set -e
             cd /var/www/current
 
-            podman login ghcr.io \
-              -u ${{ secrets.GHCR_USER }} \
-              -p ${{ secrets.GHCR_TOKEN }}
+            # login to GHCR
+            echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io \
+              -u "${{ secrets.GHCR_USER }}" --password-stdin
 
+            # build image on TEST (AS YOU WANT)
+            podman build -t ${IMAGE_NAME} .
+
+            # push to GHCR
+            podman push ${IMAGE_NAME}
+
+            # deploy on TEST
             IMAGE_TAG=${IMAGE_TAG} podman-compose down || true
             IMAGE_TAG=${IMAGE_TAG} podman-compose up -d
           EOF
 
+          echo "image_tag=${IMAGE_TAG}" >> \$GITHUB_OUTPUT
+
 
   deploy_prod:
-    needs: deploy_test
+    needs: build_and_test
     runs-on: self-hosted
-    environment: production   # 🔴 Approval gate
+    environment: production   # approval gate
 
     steps:
       - name: Deploy to PROD using Ansible
         env:
-          IMAGE_TAG: ${{ needs.build_image.outputs.image_tag }}
+          IMAGE_TAG: ${{ needs.build_and_test.outputs.image_tag }}
           GHCR_USER: ${{ secrets.GHCR_USER }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
-          echo "Deploying image tag to PROD: ${IMAGE_TAG}"
+          echo "Promoting image tag to PROD: ${IMAGE_TAG}"
 
           ansible-playbook \
             /home/runner/ansible-bitrix-laravel/playbooks/deploy-prod.yml \
