@@ -11,7 +11,6 @@ jobs:
 
     outputs:
       image_tag: ${{ steps.set_tag.outputs.image_tag }}
-      echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
     steps:
       - name: Checkout code
@@ -32,27 +31,23 @@ jobs:
             set -e
             cd /var/www/current
 
-            # login to GHCR
             echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io \
               -u "${{ secrets.GHCR_USER }}" --password-stdin
 
-            # build image on TEST (AS YOU WANT)
             podman build -t ${IMAGE_NAME} .
-
-            # push to GHCR
             podman push ${IMAGE_NAME}
 
-            # deploy on TEST
             IMAGE_TAG=${IMAGE_TAG} podman-compose down || true
             IMAGE_TAG=${IMAGE_TAG} podman-compose up -d
           EOF
 
-          echo "image_tag=${IMAGE_TAG}" >> \$GITHUB_OUTPUT
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+
 
   deploy_prod:
     needs: build_and_test
     runs-on: self-hosted
-    environment: production   # approval gate
+    environment: production
 
     steps:
       - name: Debug image tag from build job
@@ -73,4 +68,3 @@ jobs:
             -e image_tag=${IMAGE_TAG} \
             -e ghcr_user=${GHCR_USER} \
             -e ghcr_token=${GHCR_TOKEN}
-
