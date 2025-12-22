@@ -116,7 +116,7 @@
 </head>
 
 <body>
-    <h1>رفع ملف step 16 final be rgola mot</h1>
+    <h1>رفع ملف step 16</h1>
 
     @if (session('success'))
         <p style="color: #34c759; font-weight: bold;">{{ session('success') }}</p>
